@@ -97,3 +97,33 @@ curl -X POST http://localhost:8000/api/generate \
 - 固定 pixel-art，换三种类型出图：构图差异符合预期（全身角色 / 单物体图标 / 均匀纹理）
 - 固定 character，换三种风格出图：像素/矢量/手绘视觉差异明显，类型特征保持一致
 - 非法 `style` / `asset_type` / 空 prompt 均返回 422
+
+---
+
+## 2026-05-24（续二）
+
+### 完成功能
+- 去背景透明化：生成后可选用 rembg 本地抠图，输出透明 PNG
+- 前端新增「去除背景」勾选框，默认勾选
+
+### 改动的主要文件
+- `backend/bg_remover.py` — 新建，下载万相图片 → rembg 去背景 → 存 `backend/static/{uuid}.png` → 返回 `/static/xxx.png`，失败降级返回原图
+- `backend/main.py` — 挂载 `/static` 静态文件服务，`GenerateRequest` 新增 `remove_bg: bool = True` 字段，pipeline 末尾加去背景步骤
+- `backend/requirements.txt` — 新增 `rembg==2.0.62`、`onnxruntime==1.26.0`
+- `frontend/vite.config.js` — 开发代理新增 `/static → localhost:8000`
+- `frontend/src/App.jsx` — 新增 `removeBg` 状态和勾选框，默认勾选，生成时传 `remove_bg`
+- `frontend/src/App.css` — 新增 `.toggle-row` 勾选框样式
+- `.gitignore` — 新增 `backend/static/`
+- `backend/README.md` — 新增 rembg 首次下载说明、`remove_bg` 参数说明
+
+### 技术实现要点
+- 处理后图片保存在 `backend/static/`，通过 FastAPI `StaticFiles` 挂载为 `/static`，Vite dev proxy 同步转发
+- `remove_bg=true` 返回 `/static/uuid.png`（RGBA 透明 PNG）；`remove_bg=false` 直接返回万相 HTTPS URL
+- rembg 首次调用自动下载 u2net 模型（约 170 MB）到 `~/.u2net/`，后续直接用缓存
+- 去背景任何异常均 catch 降级，不影响主流程
+- `backend/static/` 不纳入版本控制
+
+### 测试验证
+- `remove_bg=false`：返回万相原图 HTTPS URL，状态 200 ✓
+- `remove_bg=true`：返回 `/static/xxx.png`，文件 RGBA 模式，1024×1024，约 49% 像素透明 ✓
+- `/static/xxx.png` HTTP 访问：200，Content-Type: image/png ✓
