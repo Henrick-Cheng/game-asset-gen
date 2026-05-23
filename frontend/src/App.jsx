@@ -5,6 +5,7 @@ export default function App() {
   const [prompt, setPrompt] = useState('')
   const [style, setStyle] = useState('pixel-art')
   const [assetType, setAssetType] = useState('character')
+  const [removeBg, setRemoveBg] = useState(true)
   const [styles, setStyles] = useState([])
   const [assetTypes, setAssetTypes] = useState([])
   const [imageUrl, setImageUrl] = useState('')
@@ -26,7 +27,7 @@ export default function App() {
       const res = await fetch('/api/generate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ prompt: prompt.trim(), style, asset_type: assetType }),
+        body: JSON.stringify({ prompt: prompt.trim(), style, asset_type: assetType, remove_bg: removeBg }),
       })
       const data = await res.json()
       if (!res.ok) {
@@ -95,6 +96,16 @@ export default function App() {
           </div>
         </div>
       </div>
+
+      <label className="toggle-row">
+        <input
+          type="checkbox"
+          checked={removeBg}
+          onChange={e => setRemoveBg(e.target.checked)}
+          disabled={loading}
+        />
+        去除背景（输出透明 PNG）
+      </label>
 
       {error && <p className="error">{error}</p>}
 
