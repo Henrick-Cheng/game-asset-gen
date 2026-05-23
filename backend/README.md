@@ -9,12 +9,16 @@ backend/
 ├── prompt_enhancer.py   # Qwen 提示词增强（失败时自动降级）
 ├── style_presets.py     # 风格预设配置
 ├── asset_types.py       # 素材类型配置
+├── bg_remover.py        # rembg 去背景（失败时降级返回原图）
+├── static/              # 去背景后的透明 PNG（运行时生成，不纳入版本控制）
 ├── requirements.txt
 ├── .env.example         # 环境变量模板
 └── README.md
 ```
 
 ## 1. 安装依赖
+
+> **rembg 首次运行说明**：去背景功能使用 rembg（u2net 模型）。第一次调用 `/api/generate`（`remove_bg: true`）时，rembg 会自动下载模型文件（约 170 MB）到 `~/.u2net/`，下载完成后后续调用直接使用缓存，无需重新下载。如网络较慢，首次请求耗时会明显增加（正常现象）。
 
 建议使用虚拟环境：
 
@@ -62,6 +66,7 @@ uvicorn main:app --reload --host 0.0.0.0 --port 8000
 
 `style` 可选，默认 `"pixel-art"`，可选值见 `/api/styles`。
 `asset_type` 可选，默认 `"character"`，可选值见 `/api/asset-types`。
+`remove_bg` 可选布尔，默认 `true`。为 `true` 时返回去背景透明 PNG（`/static/xxx.png`），为 `false` 时返回万相原图 URL。
 
 **成功响应（200）：**
 

@@ -1,11 +1,14 @@
 from contextlib import asynccontextmanager
+from pathlib import Path
 
 from dotenv import load_dotenv
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, field_validator
 
 from asset_types import ASSET_TYPES, DEFAULT_ASSET_TYPE_ID
+from bg_remover import STATIC_DIR, remove_background
 from prompt_enhancer import enhance_prompt
 from style_presets import DEFAULT_STYLE_ID, STYLE_PRESETS
 from wanx_client import WanxError, generate_image
@@ -15,6 +18,7 @@ load_dotenv()  # 读取同目录 .env（开发环境）
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    STATIC_DIR.mkdir(exist_ok=True)
     yield
 
 
@@ -27,11 +31,15 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+STATIC_DIR.mkdir(exist_ok=True)
+app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
+
 
 class GenerateRequest(BaseModel):
     prompt: str
     style: str = DEFAULT_STYLE_ID
     asset_type: str = DEFAULT_ASSET_TYPE_ID
+    remove_bg: bool = True
 
     @field_validator("prompt")
     @classmethod
@@ -64,7 +72,7 @@ class GenerateResponse(BaseModel):
 
 @app.post("/api/generate", response_model=GenerateResponse)
 async def generate(req: GenerateRequest):
-    """提示词增强 → 拼接风格后缀 → 拼接类型提示词 → 通义万相文生图。"""
+    """提示词增强 → 拼接风格后缀 → 拼接类型提示词 → 通义万相文生图 → 可选去背景。"""
     enhanced = await enhance_prompt(req.prompt)
     style_suffix = STYLE_PRESETS[req.style].suffix
     type_suffix = ASSET_TYPES[req.asset_type].suffix
@@ -74,6 +82,10 @@ async def generate(req: GenerateRequest):
         url = await generate_image(final_prompt)
     except WanxError as e:
         raise HTTPException(status_code=502, detail=str(e))
+
+    if req.remove_bg:
+        url = await remove_background(url)
+
     return GenerateResponse(image_url=url)
 
 
