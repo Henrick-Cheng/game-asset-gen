@@ -8,6 +8,7 @@ backend/
 ├── wanx_client.py       # 通义万相文生图封装
 ├── prompt_enhancer.py   # Qwen 提示词增强（失败时自动降级）
 ├── style_presets.py     # 风格预设配置
+├── asset_types.py       # 素材类型配置
 ├── requirements.txt
 ├── .env.example         # 环境变量模板
 └── README.md
@@ -47,18 +48,20 @@ uvicorn main:app --reload --host 0.0.0.0 --port 8000
 
 ### POST /api/generate
 
-处理流程：用户 prompt → Qwen 增强 → 拼接风格后缀 → 通义万相文生图
+处理流程：用户 prompt → Qwen 增强 → 拼接风格后缀 → 拼接类型提示词 → 通义万相文生图
 
 **请求：**
 
 ```json
 {
   "prompt": "像素风格的勇者骑士，正面站立，白色背景",
-  "style": "pixel-art"
+  "style": "pixel-art",
+  "asset_type": "character"
 }
 ```
 
 `style` 可选，默认 `"pixel-art"`，可选值见 `/api/styles`。
+`asset_type` 可选，默认 `"character"`，可选值见 `/api/asset-types`。
 
 **成功响应（200）：**
 
@@ -69,6 +72,22 @@ uvicorn main:app --reload --host 0.0.0.0 --port 8000
 **错误响应（422）：** `style` 传了不存在的值
 
 **错误响应（502）：** 通义万相调用失败
+
+---
+
+### GET /api/asset-types
+
+返回所有可用素材类型列表。
+
+**响应示例：**
+
+```json
+[
+  { "id": "character", "name": "角色精灵" },
+  { "id": "icon",      "name": "道具图标" },
+  { "id": "tile",      "name": "地块贴图" }
+]
+```
 
 ---
 
