@@ -70,3 +70,30 @@ curl -X POST http://localhost:8000/api/generate \
   -H "Content-Type: application/json" \
   -d '{"prompt": "测试", "style": "invalid"}'
 ```
+
+---
+
+## 2026-05-24（续）
+
+### 完成功能
+- 素材类型区分（character / icon / tile），与风格预设正交组合
+- 新增 `GET /api/asset-types` 接口
+- 前端新增素材类型与风格两组选择器
+
+### 改动的主要文件
+- `backend/asset_types.py` — 新建，3 种素材类型配置（character / icon / tile）
+- `backend/main.py` — 新增 `asset_type` 字段与校验，pipeline 末尾拼接类型后缀，新增 `/api/asset-types` 路由
+- `frontend/src/App.jsx` — 启动时拉取 `/api/styles` 和 `/api/asset-types`，新增两组胶囊选择器，生成时传 `asset_type`
+- `frontend/src/App.css` — 新增 selector 相关样式
+- `backend/README.md` — 更新目录结构与接口文档
+
+### 技术实现要点
+- 最终 prompt 拼接顺序：Qwen 增强结果 + 风格后缀 + 类型后缀
+- 类型后缀描述构图/视角特征（全身居中 / 单物体图标 / 可平铺纹理），与风格后缀描述画面渲染风格，两者正交不干扰
+- `asset_type` 字段默认值 `"character"`，非法值返回 422
+- 并发测试时触发 DashScope 429 限流，顺序补跑可绕过
+
+### 测试验证
+- 固定 pixel-art，换三种类型出图：构图差异符合预期（全身角色 / 单物体图标 / 均匀纹理）
+- 固定 character，换三种风格出图：像素/矢量/手绘视觉差异明显，类型特征保持一致
+- 非法 `style` / `asset_type` / 空 prompt 均返回 422
