@@ -26,6 +26,9 @@
 - 前端最小界面与前后端联调
 - 后端提示词处理管线：Qwen 增强 + 风格预设（pixel-art / flat-vector / hand-drawn）
 - GET /api/styles 接口
+- 素材类型区分（character / icon / tile），独立配置文件 asset_types.py
+- GET /api/asset-types 接口
+- 前端新增素材类型与风格选择器（胶囊按钮，两维度自由组合）
 
 ## 协作规范(重要)
 - 一次只完成一个功能模块,不要一次性写多个功能

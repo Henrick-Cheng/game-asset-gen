@@ -98,3 +98,55 @@ h1 {
   font-size: 14px;
   margin: 0;
 }
+
+.selector-row {
+  display: flex;
+  width: 100%;
+  gap: 24px;
+  flex-wrap: wrap;
+}
+
+.selector-group {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.selector-label {
+  font-size: 14px;
+  color: #6b7280;
+  white-space: nowrap;
+}
+
+.selector-options {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.selector-btn {
+  padding: 6px 14px;
+  font-size: 13px;
+  border: 1px solid #d1d5db;
+  border-radius: 20px;
+  background: #fff;
+  color: #374151;
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s, color 0.15s;
+}
+
+.selector-btn:hover:not(:disabled) {
+  border-color: #6366f1;
+  color: #6366f1;
+}
+
+.selector-btn.active {
+  background: #6366f1;
+  border-color: #6366f1;
+  color: #fff;
+}
+
+.selector-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}

@@ -1,11 +1,20 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import './App.css'
 
 export default function App() {
   const [prompt, setPrompt] = useState('')
+  const [style, setStyle] = useState('pixel-art')
+  const [assetType, setAssetType] = useState('character')
+  const [styles, setStyles] = useState([])
+  const [assetTypes, setAssetTypes] = useState([])
   const [imageUrl, setImageUrl] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+
+  useEffect(() => {
+    fetch('/api/styles').then(r => r.json()).then(setStyles).catch(() => {})
+    fetch('/api/asset-types').then(r => r.json()).then(setAssetTypes).catch(() => {})
+  }, [])
 
   async function handleGenerate() {
     if (!prompt.trim()) return
@@ -17,7 +26,7 @@ export default function App() {
       const res = await fetch('/api/generate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ prompt: prompt.trim() }),
+        body: JSON.stringify({ prompt: prompt.trim(), style, asset_type: assetType }),
       })
       const data = await res.json()
       if (!res.ok) {
@@ -51,6 +60,40 @@ export default function App() {
         <button onClick={handleGenerate} disabled={loading || !prompt.trim()}>
           {loading ? '生成中...' : '生成'}
         </button>
+      </div>
+
+      <div className="selector-row">
+        <div className="selector-group">
+          <span className="selector-label">素材类型</span>
+          <div className="selector-options">
+            {assetTypes.map(t => (
+              <button
+                key={t.id}
+                className={`selector-btn${assetType === t.id ? ' active' : ''}`}
+                onClick={() => setAssetType(t.id)}
+                disabled={loading}
+              >
+                {t.name}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <div className="selector-group">
+          <span className="selector-label">风格</span>
+          <div className="selector-options">
+            {styles.map(s => (
+              <button
+                key={s.id}
+                className={`selector-btn${style === s.id ? ' active' : ''}`}
+                onClick={() => setStyle(s.id)}
+                disabled={loading}
+              >
+                {s.name}
+              </button>
+            ))}
+          </div>
+        </div>
       </div>
 
       {error && <p className="error">{error}</p>}
