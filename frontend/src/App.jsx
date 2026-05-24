@@ -11,6 +11,9 @@ export default function App() {
   const [gallery, setGallery] = useState([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+  const [selected, setSelected] = useState(new Set())
+  const [atlasFormat, setAtlasFormat] = useState('json')
+  const [packing, setPacking] = useState(false)
 
   useEffect(() => {
     fetch('/api/styles').then(r => r.json()).then(setStyles).catch(() => {})
@@ -54,6 +57,50 @@ export default function App() {
 
   function handleDelete(id) {
     setGallery(prev => prev.filter(item => item.id !== id))
+    setSelected(prev => { const s = new Set(prev); s.delete(id); return s })
+  }
+
+  function toggleSelect(id) {
+    setSelected(prev => {
+      const s = new Set(prev)
+      s.has(id) ? s.delete(id) : s.add(id)
+      return s
+    })
+  }
+
+  async function handlePack() {
+    const localUrls = gallery
+      .filter(item => selected.has(item.id) && item.imageUrl.startsWith('/static/'))
+      .map(item => item.imageUrl)
+
+    if (localUrls.length < 2) {
+      setError('打包需要至少 2 张本地图片（外部 URL 不支持）')
+      return
+    }
+
+    setPacking(true)
+    setError('')
+    try {
+      const res = await fetch('/api/pack', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ image_urls: localUrls, atlas_format: atlasFormat }),
+      })
+      if (!res.ok) {
+        const data = await res.json()
+        throw new Error(data.detail || `请求失败 (${res.status})`)
+      }
+      const blob = await res.blob()
+      const a = document.createElement('a')
+      a.href = URL.createObjectURL(blob)
+      a.download = 'sprites.zip'
+      a.click()
+      URL.revokeObjectURL(a.href)
+    } catch (err) {
+      setError(err.message || '打包失败，请重试')
+    } finally {
+      setPacking(false)
+    }
   }
 
   async function handleDownload(imageUrl, prompt) {
@@ -69,6 +116,10 @@ export default function App() {
       window.open(imageUrl, '_blank')
     }
   }
+
+  const selectedLocalCount = gallery.filter(
+    item => selected.has(item.id) && item.imageUrl.startsWith('/static/')
+  ).length
 
   return (
     <div className="app">
@@ -133,6 +184,45 @@ export default function App() {
           </label>
         </div>
 
+        {selected.size >= 1 && (
+          <div className="pack-bar">
+            <span className="hint">
+              已选 {selected.size} 张
+              {selectedLocalCount < selected.size && `（${selectedLocalCount} 张可打包）`}
+            </span>
+
+            <div className="pack-format">
+              <span className="selector-label">图集格式</span>
+              <div className="selector-options">
+                <button
+                  className={`selector-btn${atlasFormat === 'json' ? ' active' : ''}`}
+                  onClick={() => setAtlasFormat('json')}
+                >
+                  JSON
+                </button>
+                <button
+                  className={`selector-btn${atlasFormat === 'godot' ? ' active' : ''}`}
+                  onClick={() => setAtlasFormat('godot')}
+                >
+                  Godot
+                </button>
+              </div>
+            </div>
+
+            <button
+              className="pack-btn"
+              onClick={handlePack}
+              disabled={packing || selectedLocalCount < 2}
+              title={selectedLocalCount < 2 ? '至少需要 2 张本地图片' : ''}
+            >
+              {packing ? '打包中...' : '打包导出'}
+            </button>
+            <button className="pack-btn secondary" onClick={() => setSelected(new Set())}>
+              取消选择
+            </button>
+          </div>
+        )}
+
         {error && <p className="error">{error}</p>}
         {loading && <p className="hint">正在生成，通常需要 10～30 秒...</p>}
       </div>
@@ -145,8 +235,18 @@ export default function App() {
         ) : (
           <div className="gallery-grid">
             {gallery.map(item => (
-              <div key={item.id} className="gallery-card">
-                <div className="card-image">
+              <div
+                key={item.id}
+                className={`gallery-card${selected.has(item.id) ? ' selected' : ''}`}
+              >
+                <label className="card-select">
+                  <input
+                    type="checkbox"
+                    checked={selected.has(item.id)}
+                    onChange={() => toggleSelect(item.id)}
+                  />
+                </label>
+                <div className="card-image" onClick={() => toggleSelect(item.id)}>
                   <img src={item.imageUrl} alt={item.prompt} />
                 </div>
                 <div className="card-meta">
