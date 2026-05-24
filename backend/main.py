@@ -2,13 +2,14 @@ from contextlib import asynccontextmanager
 from pathlib import Path
 
 from dotenv import load_dotenv
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Response
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, field_validator
 
 from asset_types import ASSET_TYPES, DEFAULT_ASSET_TYPE_ID
 from bg_remover import STATIC_DIR, remove_background
+from packer import pack
 from prompt_enhancer import enhance_prompt
 from style_presets import DEFAULT_STYLE_ID, STYLE_PRESETS
 from wanx_client import WanxError, generate_image
@@ -99,6 +100,50 @@ async def list_styles():
 async def list_asset_types():
     """返回所有可用素材类型。"""
     return [{"id": t.id, "name": t.name} for t in ASSET_TYPES.values()]
+
+
+VALID_ATLAS_FORMATS = {"json", "godot"}
+
+
+class PackRequest(BaseModel):
+    image_urls: list[str]
+    atlas_format: str = "json"
+
+    @field_validator("image_urls")
+    @classmethod
+    def at_least_two(cls, v: list[str]) -> list[str]:
+        if len(v) < 2:
+            raise ValueError("至少需要选择 2 张图片")
+        return v
+
+    @field_validator("atlas_format")
+    @classmethod
+    def format_must_be_valid(cls, v: str) -> str:
+        if v not in VALID_ATLAS_FORMATS:
+            raise ValueError(f"atlas_format 无效，可选值：{', '.join(VALID_ATLAS_FORMATS)}")
+        return v
+
+
+@app.post("/api/pack")
+async def pack_sprites(req: PackRequest):
+    """将多张已生成的本地图片打包为精灵图大图 + atlas 描述文件，以 ZIP 形式返回。"""
+    for url in req.image_urls:
+        if not url.startswith("/static/"):
+            raise HTTPException(status_code=400, detail=f"不支持的图片来源：{url}")
+        path = STATIC_DIR / url.removeprefix("/static/")
+        if not path.exists():
+            raise HTTPException(status_code=404, detail=f"图片文件不存在：{url}")
+
+    try:
+        zip_bytes = pack(req.image_urls, req.atlas_format)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"打包失败：{e}")
+
+    return Response(
+        content=zip_bytes,
+        media_type="application/zip",
+        headers={"Content-Disposition": "attachment; filename=sprites.zip"},
+    )
 
 
 @app.get("/health")

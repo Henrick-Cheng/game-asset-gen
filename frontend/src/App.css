@@ -284,3 +284,84 @@ h1 {
 .card-btn.danger:hover {
   background: #fef2f2;
 }
+
+/* ── Pack export bar ── */
+
+.pack-bar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  padding: 8px 14px;
+  background: #eef2ff;
+  border: 1px solid #c7d2fe;
+  border-radius: 8px;
+}
+
+.pack-format {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.pack-btn {
+  padding: 6px 18px;
+  font-size: 13px;
+  font-weight: 500;
+  color: #fff;
+  background: #6366f1;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background 0.2s;
+  white-space: nowrap;
+}
+
+.pack-btn:hover:not(:disabled) {
+  background: #4f46e5;
+}
+
+.pack-btn:disabled {
+  background: #a5b4fc;
+  cursor: not-allowed;
+}
+
+.pack-btn.secondary {
+  background: #fff;
+  color: #6366f1;
+  border: 1px solid #c7d2fe;
+}
+
+.pack-btn.secondary:hover:not(:disabled) {
+  background: #eef2ff;
+}
+
+/* ── Card selection ── */
+
+.gallery-card {
+  position: relative;
+}
+
+.gallery-card.selected {
+  border-color: #6366f1;
+  box-shadow: 0 0 0 2px #c7d2fe;
+}
+
+.card-select {
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  z-index: 1;
+  cursor: pointer;
+}
+
+.card-select input[type="checkbox"] {
+  width: 16px;
+  height: 16px;
+  cursor: pointer;
+  accent-color: #6366f1;
+}
+
+.card-image {
+  cursor: pointer;
+}
