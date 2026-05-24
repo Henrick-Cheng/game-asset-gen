@@ -127,3 +127,29 @@ curl -X POST http://localhost:8000/api/generate \
 - `remove_bg=false`：返回万相原图 HTTPS URL，状态 200 ✓
 - `remove_bg=true`：返回 `/static/xxx.png`，文件 RGBA 模式，1024×1024，约 49% 像素透明 ✓
 - `/static/xxx.png` HTTP 访问：200，Content-Type: image/png ✓
+
+---
+
+## 2026-05-25
+
+### 完成功能
+- 画廊式结果展示界面：每次生成结果累积为卡片，支持下载和删除
+
+### 改动的主要文件
+- `frontend/src/App.jsx` — 移除单张展示逻辑，改为 gallery 数组 state；每次生成成功后 prepend 新卡片；新增 handleDelete / handleDownload
+- `frontend/src/App.css` — 整体重写布局：controls 固定顶部面板，gallery-section 占剩余区域；新增 gallery-grid、gallery-card、card-image（棋盘格）、card-meta、card-actions 等样式
+
+### 技术实现要点
+- 画廊数据存 React state（数组），刷新页面清空，无后端持久化
+- 新生成的卡片 prepend（`[newCard, ...prev]`），最新结果排最前
+- 每张卡片记录生成时的 prompt、styleName、assetTypeName，标注固定不随后续选择变化
+- 棋盘格底纹用 4 段 CSS `linear-gradient` 实现，透明区域可直观显示
+- 下载：先 fetch 转 Blob 创建 ObjectURL 触发下载，CORS 失败时降级 `window.open`
+- 文件名取 prompt 前 20 字符，替换非法字符后加 `.png` 后缀
+
+### 测试验证（Playwright 自动化）
+- 连续生成 4 张（4 种风格/类型组合），画廊累积计数 1→2→3→4，无覆盖 ✓
+- 每张卡片 prompt / 风格标签 / 类型标签与生成时选项一一匹配 ✓
+- 下载触发 download 事件，文件名含 prompt 文字 ✓
+- 删除中间某张，剩余 3 张内容正确 ✓
+- 棋盘格底纹 CSS 生效，透明素材可视 ✓
