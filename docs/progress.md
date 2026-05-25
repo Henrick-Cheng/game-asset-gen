@@ -153,3 +153,35 @@ curl -X POST http://localhost:8000/api/generate \
 - 下载触发 download 事件，文件名含 prompt 文字 ✓
 - 删除中间某张，剩余 3 张内容正确 ✓
 - 棋盘格底纹 CSS 生效，透明素材可视 ✓
+
+---
+
+## 2026-05-25（续）
+
+### 完成功能
+- 精灵图打包与引擎导出：从画廊多选素材，打包为精灵图大图 + 图集描述文件，以 ZIP 下载
+- README.md 起草
+
+### 改动的主要文件
+- `backend/packer.py` — 新建，Shelf 行装箱算法 + JSON 图集生成 + Godot 4 `.tres` 图集生成 + ZIP 打包
+- `backend/main.py` — 新增 `POST /api/pack` 接口，接收本地图片 URL 列表和格式参数，返回 ZIP
+- `backend/requirements.txt` — 新增 `Pillow==12.2.0`（显式声明，rembg 已有此传递依赖）
+- `backend/test_packer.py` — 新建，合成测试精灵图后验证不重叠、透明保留、坐标像素级对应；含 HTTP 接口端到端测试
+- `frontend/src/App.jsx` — 新增 selected（Set）、atlasFormat、packing 状态；卡片复选框与点击图片区域可切换选中；选中 ≥1 张时显示打包栏；调用 `/api/pack` 后触发 ZIP 下载
+- `frontend/src/App.css` — 新增打包栏（`.pack-bar`）、格式选择器（`.pack-format`）、打包按钮（`.pack-btn`）、卡片选中高亮（`.gallery-card.selected`、`.card-select`）样式
+- `README.md` — 新建，含项目简介、核心功能、技术栈与依赖（区分第三方与原创）、目录结构、安装运行步骤
+
+### 技术实现要点
+- **Shelf 行装箱算法**：按高度降序排列，逐行从左到右放置；目标宽度取 `max(最宽图片宽, √总面积 × 1.2)`，上限 4096px；相邻精灵间留 1px 间距防纹理渗色
+- **JSON 图集格式**：`{ frames: [{name, x, y, w, h}], meta: {image, size} }`，与 Phaser 3 / PixiJS 兼容
+- **Godot 4 `.tres` 格式**：每帧生成独立 `[sub_resource type="AtlasTexture"]`，引用同目录 `res://spritesheet.png`，可直接在 Sprite2D 节点中引用
+- **ZIP 返回**：FastAPI `Response(content=zip_bytes, media_type="application/zip")`，前端 `res.blob()` 后创建 ObjectURL 触发下载
+- **输入校验**：URL 必须以 `/static/` 开头且文件存在（400/404）；图片数量 < 2 返回 422；atlas_format 非法返回 422
+
+### 测试验证
+- 合成 4 张不同尺寸测试精灵（64×80、32×32、128×24、40×56），逐帧验证中心像素有内容、四角 alpha=0（透明保留）✓
+- 所有帧 AABB 两两不相交（无重叠）✓
+- `meta.size` 与实际大图像素尺寸一致 ✓
+- Godot `.tres` 中 AtlasTexture 数量与帧数一致，抽样坐标字符串出现在文件中 ✓
+- 用真实 app 生成图（1024×1024）打包，坐标合法、有内容 ✓
+- HTTP 接口端到端：正常请求返回 ZIP（200）；< 2 张返回 422；外部 URL 返回 400；文件不存在返回 404 ✓
